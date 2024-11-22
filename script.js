@@ -10,7 +10,11 @@ const resultsScreen = document.getElementById('results-screen');
 // カメラアクセス設定
 async function setupCamera() {
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    const stream = await navigator.mediaDevices.getUserMedia({ 
+      video: { 
+        facingMode: { ideal: 'environment' } // 外側カメラを使用
+      } 
+    });
     video.srcObject = stream;
   } catch (err) {
     alert('カメラのアクセスに失敗しました: ' + err.message);
