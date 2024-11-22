@@ -32,13 +32,45 @@ setInterval(() => {
   const context = canvas.getContext('2d');
   context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-  // グレースケール化と二値化の前処理
+  // グレースケール化と適応的な二値化の前処理（Otsu法の簡易版）
   const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
   const data = imageData.data;
+  let histogram = new Array(256).fill(0);
+
+  // ヒストグラムの作成
   for (let i = 0; i < data.length; i += 4) {
     const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
-    const threshold = avg > 128 ? 255 : 0; // 二値化処理
-    data[i] = data[i + 1] = data[i + 2] = threshold; // グレースケール化および二値化
+    histogram[Math.floor(avg)]++;
+  }
+
+  // Otsuのしきい値計算
+  let total = canvas.width * canvas.height;
+  let sumB = 0;
+  let wB = 0;
+  let maximum = 0;
+  let sum1 = histogram.reduce((sum, value, index) => sum + index * value, 0);
+  let threshold = 0;
+
+  for (let i = 0; i < 256; i++) {
+    wB += histogram[i];
+    if (wB === 0) continue;
+    let wF = total - wB;
+    if (wF === 0) break;
+    sumB += i * histogram[i];
+    let mB = sumB / wB;
+    let mF = (sum1 - sumB) / wF;
+    let between = wB * wF * Math.pow(mB - mF, 2);
+    if (between > maximum) {
+      maximum = between;
+      threshold = i;
+    }
+  }
+
+  // 二値化処理
+  for (let i = 0; i < data.length; i += 4) {
+    const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+    const binarizedValue = avg > threshold ? 255 : 0;
+    data[i] = data[i + 1] = data[i + 2] = binarizedValue;
   }
   context.putImageData(imageData, 0, 0);
 
@@ -63,13 +95,45 @@ captureButton.addEventListener('click', () => {
   const context = canvas.getContext('2d');
   context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-  // グレースケール化と二値化の前処理
+  // グレースケール化と適応的な二値化の前処理（Otsu法の簡易版）
   const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
   const data = imageData.data;
+  let histogram = new Array(256).fill(0);
+
+  // ヒストグラムの作成
   for (let i = 0; i < data.length; i += 4) {
     const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
-    const threshold = avg > 128 ? 255 : 0; // 二値化処理
-    data[i] = data[i + 1] = data[i + 2] = threshold; // グレースケール化および二値化
+    histogram[Math.floor(avg)]++;
+  }
+
+  // Otsuのしきい値計算
+  let total = canvas.width * canvas.height;
+  let sumB = 0;
+  let wB = 0;
+  let maximum = 0;
+  let sum1 = histogram.reduce((sum, value, index) => sum + index * value, 0);
+  let threshold = 0;
+
+  for (let i = 0; i < 256; i++) {
+    wB += histogram[i];
+    if (wB === 0) continue;
+    let wF = total - wB;
+    if (wF === 0) break;
+    sumB += i * histogram[i];
+    let mB = sumB / wB;
+    let mF = (sum1 - sumB) / wF;
+    let between = wB * wF * Math.pow(mB - mF, 2);
+    if (between > maximum) {
+      maximum = between;
+      threshold = i;
+    }
+  }
+
+  // 二値化処理
+  for (let i = 0; i < data.length; i += 4) {
+    const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+    const binarizedValue = avg > threshold ? 255 : 0;
+    data[i] = data[i + 1] = data[i + 2] = binarizedValue;
   }
   context.putImageData(imageData, 0, 0);
 
@@ -153,5 +217,3 @@ homeButton.addEventListener('click', () => {
   resultsScreen.style.display = 'none';
   cameraScreen.style.display = 'block';
 });
-
-
