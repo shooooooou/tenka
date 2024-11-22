@@ -1,3 +1,31 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>添加物検索アプリ</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="camera-screen" class="screen">
+    <h1>食品添加物検索アプリ</h1>
+    <video id="camera" autoplay></video>
+    <canvas id="snapshot"></canvas>
+    <button id="capture">読み取り開始</button>
+  </div>
+
+  <div id="results-screen" class="screen" style="display: none;">
+    <h1>検索結果</h1>
+    <div id="results"></div>
+    <button id="home">ホームに戻る</button>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@v2.1.1/dist/tesseract.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
+
+<script>
 document.addEventListener('DOMContentLoaded', () => {
   const video = document.getElementById('camera');
   const canvas = document.getElementById('snapshot');
@@ -113,3 +141,5 @@ document.addEventListener('DOMContentLoaded', () => {
     cameraScreen.style.display = 'block';
   });
 });
+</script>
+
