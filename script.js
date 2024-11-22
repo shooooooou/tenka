@@ -13,7 +13,9 @@ async function setupCamera() {
   try {
     const constraints = {
       video: {
-        facingMode: { ideal: 'environment' } // 外側カメラを使用
+        facingMode: { ideal: 'environment' }, // 外側カメラを使用
+        width: { ideal: 1920 },
+        height: { ideal: 1080 }
       }
     };
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -32,46 +34,51 @@ setInterval(() => {
   const context = canvas.getContext('2d');
   context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-  // グレースケール化と適応的な二値化の前処理（Otsu法の簡易版）
+  // グレースケール化、コントラスト強調、ガウスぼかしの前処理
   const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
   const data = imageData.data;
-  let histogram = new Array(256).fill(0);
 
-  // ヒストグラムの作成
+  // グレースケール化
   for (let i = 0; i < data.length; i += 4) {
     const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
-    histogram[Math.floor(avg)]++;
+    data[i] = data[i + 1] = data[i + 2] = avg;
   }
 
-  // Otsuのしきい値計算
-  let total = canvas.width * canvas.height;
-  let sumB = 0;
-  let wB = 0;
-  let maximum = 0;
-  let sum1 = histogram.reduce((sum, value, index) => sum + index * value, 0);
-  let threshold = 0;
+  // コントラスト強調
+  const contrast = 1.5; // コントラスト倍率
+  for (let i = 0; i < data.length; i += 4) {
+    data[i] = Math.min(255, Math.max(0, contrast * (data[i] - 128) + 128));
+    data[i + 1] = Math.min(255, Math.max(0, contrast * (data[i + 1] - 128) + 128));
+    data[i + 2] = Math.min(255, Math.max(0, contrast * (data[i + 2] - 128) + 128));
+  }
 
-  for (let i = 0; i < 256; i++) {
-    wB += histogram[i];
-    if (wB === 0) continue;
-    let wF = total - wB;
-    if (wF === 0) break;
-    sumB += i * histogram[i];
-    let mB = sumB / wB;
-    let mF = (sum1 - sumB) / wF;
-    let between = wB * wF * Math.pow(mB - mF, 2);
-    if (between > maximum) {
-      maximum = between;
-      threshold = i;
+  // ガウスぼかし（簡易版）
+  const kernel = [
+    [1, 2, 1],
+    [2, 4, 2],
+    [1, 2, 1]
+  ];
+  const kernelWeight = 16;
+  const tempData = new Uint8ClampedArray(data);
+  for (let y = 1; y < canvas.height - 1; y++) {
+    for (let x = 1; x < canvas.width - 1; x++) {
+      let r = 0, g = 0, b = 0;
+      for (let ky = -1; ky <= 1; ky++) {
+        for (let kx = -1; kx <= 1; kx++) {
+          const pixelIndex = ((y + ky) * canvas.width + (x + kx)) * 4;
+          const weight = kernel[ky + 1][kx + 1];
+          r += tempData[pixelIndex] * weight;
+          g += tempData[pixelIndex + 1] * weight;
+          b += tempData[pixelIndex + 2] * weight;
+        }
+      }
+      const index = (y * canvas.width + x) * 4;
+      data[index] = r / kernelWeight;
+      data[index + 1] = g / kernelWeight;
+      data[index + 2] = b / kernelWeight;
     }
   }
 
-  // 二値化処理
-  for (let i = 0; i < data.length; i += 4) {
-    const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
-    const binarizedValue = avg > threshold ? 255 : 0;
-    data[i] = data[i + 1] = data[i + 2] = binarizedValue;
-  }
   context.putImageData(imageData, 0, 0);
 
   const processedImageData = canvas.toDataURL('image/png');
@@ -95,46 +102,51 @@ captureButton.addEventListener('click', () => {
   const context = canvas.getContext('2d');
   context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-  // グレースケール化と適応的な二値化の前処理（Otsu法の簡易版）
+  // グレースケール化、コントラスト強調、ガウスぼかしの前処理
   const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
   const data = imageData.data;
-  let histogram = new Array(256).fill(0);
 
-  // ヒストグラムの作成
+  // グレースケール化
   for (let i = 0; i < data.length; i += 4) {
     const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
-    histogram[Math.floor(avg)]++;
+    data[i] = data[i + 1] = data[i + 2] = avg;
   }
 
-  // Otsuのしきい値計算
-  let total = canvas.width * canvas.height;
-  let sumB = 0;
-  let wB = 0;
-  let maximum = 0;
-  let sum1 = histogram.reduce((sum, value, index) => sum + index * value, 0);
-  let threshold = 0;
+  // コントラスト強調
+  const contrast = 1.5; // コントラスト倍率
+  for (let i = 0; i < data.length; i += 4) {
+    data[i] = Math.min(255, Math.max(0, contrast * (data[i] - 128) + 128));
+    data[i + 1] = Math.min(255, Math.max(0, contrast * (data[i + 1] - 128) + 128));
+    data[i + 2] = Math.min(255, Math.max(0, contrast * (data[i + 2] - 128) + 128));
+  }
 
-  for (let i = 0; i < 256; i++) {
-    wB += histogram[i];
-    if (wB === 0) continue;
-    let wF = total - wB;
-    if (wF === 0) break;
-    sumB += i * histogram[i];
-    let mB = sumB / wB;
-    let mF = (sum1 - sumB) / wF;
-    let between = wB * wF * Math.pow(mB - mF, 2);
-    if (between > maximum) {
-      maximum = between;
-      threshold = i;
+  // ガウスぼかし（簡易版）
+  const kernel = [
+    [1, 2, 1],
+    [2, 4, 2],
+    [1, 2, 1]
+  ];
+  const kernelWeight = 16;
+  const tempData = new Uint8ClampedArray(data);
+  for (let y = 1; y < canvas.height - 1; y++) {
+    for (let x = 1; x < canvas.width - 1; x++) {
+      let r = 0, g = 0, b = 0;
+      for (let ky = -1; ky <= 1; ky++) {
+        for (let kx = -1; kx <= 1; kx++) {
+          const pixelIndex = ((y + ky) * canvas.width + (x + kx)) * 4;
+          const weight = kernel[ky + 1][kx + 1];
+          r += tempData[pixelIndex] * weight;
+          g += tempData[pixelIndex + 1] * weight;
+          b += tempData[pixelIndex + 2] * weight;
+        }
+      }
+      const index = (y * canvas.width + x) * 4;
+      data[index] = r / kernelWeight;
+      data[index + 1] = g / kernelWeight;
+      data[index + 2] = b / kernelWeight;
     }
   }
 
-  // 二値化処理
-  for (let i = 0; i < data.length; i += 4) {
-    const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
-    const binarizedValue = avg > threshold ? 255 : 0;
-    data[i] = data[i + 1] = data[i + 2] = binarizedValue;
-  }
   context.putImageData(imageData, 0, 0);
 
   const processedImageData = canvas.toDataURL('image/png');
