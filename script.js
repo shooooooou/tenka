@@ -1,3 +1,4 @@
+// 要素の取得
 const video = document.getElementById('camera');
 const canvas = document.getElementById('snapshot');
 const captureButton = document.getElementById('capture');
@@ -7,6 +8,43 @@ const liveOcrTextDiv = document.getElementById('live-ocr-text');
 
 const cameraScreen = document.getElementById('camera-screen');
 const resultsScreen = document.getElementById('results-screen');
+
+const box = document.getElementById('recognition-box');
+let isDragging = false;
+let startX, startY;
+
+// ドラッグ機能の実装
+box.addEventListener('mousedown', (e) => {
+  isDragging = true;
+  startX = e.clientX;
+  startY = e.clientY;
+});
+
+window.addEventListener('mousemove', (e) => {
+  if (!isDragging) return;
+  const dx = e.clientX - startX;
+  const dy = e.clientY - startY;
+  const rect = box.getBoundingClientRect();
+  const parentRect = box.parentElement.getBoundingClientRect();
+
+  let newLeft = rect.left + dx;
+  let newTop = rect.top + dy;
+
+  // 親要素内に収める
+  if (newLeft < parentRect.left) newLeft = parentRect.left;
+  if (newTop < parentRect.top) newTop = parentRect.top;
+  if (newLeft + rect.width > parentRect.right) newLeft = parentRect.right - rect.width;
+  if (newTop + rect.height > parentRect.bottom) newTop = parentRect.bottom - rect.height;
+
+  box.style.left = `${newLeft - parentRect.left}px`;
+  box.style.top = `${newTop - parentRect.top}px`;
+  startX = e.clientX;
+  startY = e.clientY;
+});
+
+window.addEventListener('mouseup', () => {
+  isDragging = false;
+});
 
 // カメラアクセス設定
 async function setupCamera() {
@@ -27,84 +65,78 @@ async function setupCamera() {
 
 setupCamera();
 
+// OpenCV.jsを使用した前処理関数
+function preprocessImage(canvasElement) {
+  return new Promise((resolve, reject) => {
+    if (typeof cv === 'undefined') {
+      reject('OpenCV.jsが読み込まれていません。');
+      return;
+    }
+
+    try {
+      let src = cv.imread(canvasElement);
+      let gray = new cv.Mat();
+      cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY, 0);
+
+      // ノイズ除去
+      cv.medianBlur(gray, gray, 3);
+
+      // バイナリ化
+      cv.threshold(gray, gray, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU);
+
+      cv.imshow(canvasElement, gray);
+      src.delete(); gray.delete();
+      resolve(canvasElement.toDataURL('image/png'));
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
 // 定期的にOCRを実行して読み取り中の文字を表示
 setInterval(() => {
   try {
     if (video.videoWidth === 0 || video.videoHeight === 0) {
-      return; // ビデオの初期化が完了していない場合はスキップ
+      return;
     }
-    
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+
+    // 認識領域の座標とサイズを取得
+    const boxRect = box.getBoundingClientRect();
+    const videoRect = video.getBoundingClientRect();
+    const scaleX = video.videoWidth / videoRect.width;
+    const scaleY = video.videoHeight / videoRect.height;
+
+    const boxWidth = boxRect.width * scaleX;
+    const boxHeight = boxRect.height * scaleY;
+    const boxLeft = (boxRect.left - videoRect.left) * scaleX;
+    const boxTop = (boxRect.top - videoRect.top) * scaleY;
+
+    canvas.width = boxWidth;
+    canvas.height = boxHeight;
     const context = canvas.getContext('2d');
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    context.drawImage(video, boxLeft, boxTop, boxWidth, boxHeight, 0, 0, boxWidth, boxHeight);
 
-    // グレースケール化、コントラスト強調、ガウスぼかしの前処理
-    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-    const data = imageData.data;
-
-    // グレースケール化
-    for (let i = 0; i < data.length; i += 4) {
-      const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
-      data[i] = data[i + 1] = data[i + 2] = avg;
-    }
-
-    // コントラスト強調
-    const contrast = 1.5; // コントラスト倍率
-    for (let i = 0; i < data.length; i += 4) {
-      data[i] = Math.min(255, Math.max(0, contrast * (data[i] - 128) + 128));
-      data[i + 1] = Math.min(255, Math.max(0, contrast * (data[i + 1] - 128) + 128));
-      data[i + 2] = Math.min(255, Math.max(0, contrast * (data[i + 2] - 128) + 128));
-    }
-
-    // ガウスぼかし（簡易版）
-    const kernel = [
-      [1, 2, 1],
-      [2, 4, 2],
-      [1, 2, 1]
-    ];
-    const kernelWeight = 16;
-    const tempData = new Uint8ClampedArray(data);
-    for (let y = 1; y < canvas.height - 1; y++) {
-      for (let x = 1; x < canvas.width - 1; x++) {
-        let r = 0, g = 0, b = 0;
-        for (let ky = -1; ky <= 1; ky++) {
-          for (let kx = -1; kx <= 1; kx++) {
-            const ny = y + ky;
-            const nx = x + kx;
-            if (ny < 0 || ny >= canvas.height || nx < 0 || nx >= canvas.width) continue; // インデックス範囲チェック
-            const pixelIndex = (ny * canvas.width + nx) * 4;
-            const weight = kernel[ky + 1][kx + 1];
-            r += tempData[pixelIndex] * weight;
-            g += tempData[pixelIndex + 1] * weight;
-            b += tempData[pixelIndex + 2] * weight;
-          }
+    preprocessImage(canvas).then(processedImageData => {
+      Tesseract.recognize(
+        processedImageData,
+        'jpn',
+        {
+          logger: info => console.log(info),
+          tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE,
         }
-        const index = (y * canvas.width + x) * 4;
-        data[index] = r / kernelWeight;
-        data[index + 1] = g / kernelWeight;
-        data[index + 2] = b / kernelWeight;
-      }
-    }
-
-    context.putImageData(imageData, 0, 0);
-
-    const processedImageData = canvas.toDataURL('image/png');
-    Tesseract.recognize(
-      processedImageData,
-      'jpn',
-      {
-        logger: info => console.log(info),
-      }
-    ).then(({ data: { text } }) => {
-      liveOcrTextDiv.innerHTML = text;
+      ).then(({ data: { text } }) => {
+        liveOcrTextDiv.innerHTML = text;
+      }).catch(err => {
+        liveOcrTextDiv.innerHTML = '読み取り中にエラーが発生しました: ' + err.message;
+        console.error('読み取り中にエラーが発生しました:', err);
+      });
     }).catch(err => {
-      liveOcrTextDiv.innerHTML = '読み取り中にエラーが発生しました: ' + err.message;
-      alert('読み取り中にエラーが発生しました: ' + err.message);
+      liveOcrTextDiv.innerHTML = '前処理中にエラーが発生しました: ' + err.message;
+      console.error('前処理中にエラーが発生しました:', err);
     });
   } catch (error) {
     liveOcrTextDiv.innerHTML = 'エラーが発生しました: ' + error.message;
-    alert('エラーが発生しました: ' + error.message);
+    console.error('エラーが発生しました:', error);
   }
 }, 1000);
 
@@ -116,89 +148,56 @@ captureButton.addEventListener('click', () => {
       return;
     }
 
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    // 認識領域の座標とサイズを取得
+    const boxRect = box.getBoundingClientRect();
+    const videoRect = video.getBoundingClientRect();
+    const scaleX = video.videoWidth / videoRect.width;
+    const scaleY = video.videoHeight / videoRect.height;
+
+    const boxWidth = boxRect.width * scaleX;
+    const boxHeight = boxRect.height * scaleY;
+    const boxLeft = (boxRect.left - videoRect.left) * scaleX;
+    const boxTop = (boxRect.top - videoRect.top) * scaleY;
+
+    canvas.width = boxWidth;
+    canvas.height = boxHeight;
     const context = canvas.getContext('2d');
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    context.drawImage(video, boxLeft, boxTop, boxWidth, boxHeight, 0, 0, boxWidth, boxHeight);
 
-    // グレースケール化、コントラスト強調、ガウスぼかしの前処理
-    const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-    const data = imageData.data;
-
-    // グレースケール化
-    for (let i = 0; i < data.length; i += 4) {
-      const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
-      data[i] = data[i + 1] = data[i + 2] = avg;
-    }
-
-    // コントラスト強調
-    const contrast = 1.5; // コントラスト倍率
-    for (let i = 0; i < data.length; i += 4) {
-      data[i] = Math.min(255, Math.max(0, contrast * (data[i] - 128) + 128));
-      data[i + 1] = Math.min(255, Math.max(0, contrast * (data[i + 1] - 128) + 128));
-      data[i + 2] = Math.min(255, Math.max(0, contrast * (data[i + 2] - 128) + 128));
-    }
-
-    // ガウスぼかし（簡易版）
-    const kernel = [
-      [1, 2, 1],
-      [2, 4, 2],
-      [1, 2, 1]
-    ];
-    const kernelWeight = 16;
-    const tempData = new Uint8ClampedArray(data);
-    for (let y = 1; y < canvas.height - 1; y++) {
-      for (let x = 1; x < canvas.width - 1; x++) {
-        let r = 0, g = 0, b = 0;
-        for (let ky = -1; ky <= 1; ky++) {
-          for (let kx = -1; kx <= 1; kx++) {
-            const ny = y + ky;
-            const nx = x + kx;
-            if (ny < 0 || ny >= canvas.height || nx < 0 || nx >= canvas.width) continue; // インデックス範囲チェック
-            const pixelIndex = (ny * canvas.width + nx) * 4;
-            const weight = kernel[ky + 1][kx + 1];
-            r += tempData[pixelIndex] * weight;
-            g += tempData[pixelIndex + 1] * weight;
-            b += tempData[pixelIndex + 2] * weight;
-          }
-        }
-        const index = (y * canvas.width + x) * 4;
-        data[index] = r / kernelWeight;
-        data[index + 1] = g / kernelWeight;
-        data[index + 2] = b / kernelWeight;
-      }
-    }
-
-    context.putImageData(imageData, 0, 0);
-
-    const processedImageData = canvas.toDataURL('image/png');
-    performOCR(processedImageData);
+    preprocessImage(canvas).then(processedImageData => {
+      performOCR(processedImageData);
+    }).catch(err => {
+      liveOcrTextDiv.innerHTML = '前処理中にエラーが発生しました: ' + err.message;
+      console.error('前処理中にエラーが発生しました:', err);
+    });
   } catch (error) {
     liveOcrTextDiv.innerHTML = 'エラーが発生しました: ' + error.message;
-    alert('エラーが発生しました: ' + error.message);
+    console.error('エラーが発生しました:', error);
   }
 });
 
 // OCR実行
 async function performOCR(imageData) {
   detailsDiv.innerHTML = '読み取り中...';
-  const Tesseract = window.Tesseract;
-  if (!Tesseract) {
+  const TesseractInstance = window.Tesseract;
+  if (!TesseractInstance) {
     detailsDiv.innerHTML = 'OCRライブラリが読み込まれていません。';
     alert('OCRライブラリが読み込まれていません。');
     return;
   }
 
-  Tesseract.recognize(
+  TesseractInstance.recognize(
     imageData,
     'jpn',
     {
       logger: info => console.log(info),
+      tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE,
     }
   ).then(({ data: { text } }) => {
     searchAdditiveDetails(text);
   }).catch(err => {
     detailsDiv.innerHTML = '読み取りに失敗しました: ' + err.message;
+    console.error('読み取りに失敗しました:', err);
     alert('読み取りに失敗しました: ' + err.message);
   });
 }
@@ -224,6 +223,7 @@ function searchAdditiveDetails(text) {
       demerit: '人工香料は一部の人にとって刺激となる場合があります。',
       link: 'https://example.com/flavoring'
     }
+    // 必要に応じて他の添加物も追加
   };
 
   const additiveNames = text.trim().split(/\s+/);
