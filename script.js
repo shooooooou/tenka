@@ -3,6 +3,7 @@ const canvas = document.getElementById('snapshot');
 const captureButton = document.getElementById('capture');
 const detailsDiv = document.getElementById('results');
 const homeButton = document.getElementById('home');
+const liveOcrTextDiv = document.getElementById('live-ocr-text');
 
 const cameraScreen = document.getElementById('camera-screen');
 const resultsScreen = document.getElementById('results-screen');
@@ -12,7 +13,7 @@ async function setupCamera() {
   try {
     const constraints = {
       video: {
-        facingMode: { exact: 'environment' } // 外側カメラを使用
+        facingMode: { ideal: 'environment' } // 外側カメラを使用
       }
     };
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -23,6 +24,26 @@ async function setupCamera() {
 }
 
 setupCamera();
+
+// 定期的にOCRを実行して読み取り中の文字を表示
+setInterval(() => {
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+
+  const imageData = canvas.toDataURL('image/png');
+  Tesseract.recognize(
+    imageData,
+    'jpn',
+    {
+      logger: info => console.log(info),
+    }
+  ).then(({ data: { text } }) => {
+    liveOcrTextDiv.innerHTML = text;
+  }).catch(err => {
+    liveOcrTextDiv.innerHTML = '読み取り中にエラーが発生しました。';
+  });
+}, 1000);
 
 // 写真を撮る機能
 captureButton.addEventListener('click', () => {
@@ -111,4 +132,5 @@ homeButton.addEventListener('click', () => {
   resultsScreen.style.display = 'none';
   cameraScreen.style.display = 'block';
 });
+
 
