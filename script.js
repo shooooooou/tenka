@@ -12,7 +12,7 @@ async function setupCamera() {
   try {
     const constraints = {
       video: {
-        facingMode: { ideal: 'environment' } // 外側カメラを使用
+        facingMode: { exact: 'environment' } // 外側カメラを使用
       }
     };
     const stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -111,3 +111,4 @@ homeButton.addEventListener('click', () => {
   resultsScreen.style.display = 'none';
   cameraScreen.style.display = 'block';
 });
+
