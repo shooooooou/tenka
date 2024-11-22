@@ -30,6 +30,10 @@ setupCamera();
 // 定期的にOCRを実行して読み取り中の文字を表示
 setInterval(() => {
   try {
+    if (video.videoWidth === 0 || video.videoHeight === 0) {
+      return; // ビデオの初期化が完了していない場合はスキップ
+    }
+    
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     const context = canvas.getContext('2d');
@@ -67,6 +71,7 @@ setInterval(() => {
         for (let ky = -1; ky <= 1; ky++) {
           for (let kx = -1; kx <= 1; kx++) {
             const pixelIndex = ((y + ky) * canvas.width + (x + kx)) * 4;
+            if (pixelIndex < 0 || pixelIndex >= tempData.length) continue; // インデックス範囲チェック
             const weight = kernel[ky + 1][kx + 1];
             r += tempData[pixelIndex] * weight;
             g += tempData[pixelIndex + 1] * weight;
@@ -104,6 +109,11 @@ setInterval(() => {
 // 写真を撮る機能
 captureButton.addEventListener('click', () => {
   try {
+    if (video.videoWidth === 0 || video.videoHeight === 0) {
+      alert('ビデオが初期化されていません。しばらく待ってから再試行してください。');
+      return;
+    }
+
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     const context = canvas.getContext('2d');
@@ -141,6 +151,7 @@ captureButton.addEventListener('click', () => {
         for (let ky = -1; ky <= 1; ky++) {
           for (let kx = -1; kx <= 1; kx++) {
             const pixelIndex = ((y + ky) * canvas.width + (x + kx)) * 4;
+            if (pixelIndex < 0 || pixelIndex >= tempData.length) continue; // インデックス範囲チェック
             const weight = kernel[ky + 1][kx + 1];
             r += tempData[pixelIndex] * weight;
             g += tempData[pixelIndex + 1] * weight;
