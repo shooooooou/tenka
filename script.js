@@ -70,8 +70,10 @@ setInterval(() => {
         let r = 0, g = 0, b = 0;
         for (let ky = -1; ky <= 1; ky++) {
           for (let kx = -1; kx <= 1; kx++) {
-            const pixelIndex = ((y + ky) * canvas.width + (x + kx)) * 4;
-            if (pixelIndex < 0 || pixelIndex >= tempData.length) continue; // インデックス範囲チェック
+            const ny = y + ky;
+            const nx = x + kx;
+            if (ny < 0 || ny >= canvas.height || nx < 0 || nx >= canvas.width) continue; // インデックス範囲チェック
+            const pixelIndex = (ny * canvas.width + nx) * 4;
             const weight = kernel[ky + 1][kx + 1];
             r += tempData[pixelIndex] * weight;
             g += tempData[pixelIndex + 1] * weight;
@@ -150,8 +152,10 @@ captureButton.addEventListener('click', () => {
         let r = 0, g = 0, b = 0;
         for (let ky = -1; ky <= 1; ky++) {
           for (let kx = -1; kx <= 1; kx++) {
-            const pixelIndex = ((y + ky) * canvas.width + (x + kx)) * 4;
-            if (pixelIndex < 0 || pixelIndex >= tempData.length) continue; // インデックス範囲チェック
+            const ny = y + ky;
+            const nx = x + kx;
+            if (ny < 0 || ny >= canvas.height || nx < 0 || nx >= canvas.width) continue; // インデックス範囲チェック
+            const pixelIndex = (ny * canvas.width + nx) * 4;
             const weight = kernel[ky + 1][kx + 1];
             r += tempData[pixelIndex] * weight;
             g += tempData[pixelIndex + 1] * weight;
