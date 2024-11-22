@@ -1,82 +1,119 @@
+/* 全体のスタイル */
 body {
   font-family: Arial, sans-serif;
+  background-color: #ffffff;
+  margin: 0;
+  padding: 0;
   text-align: center;
-  margin: 20px;
 }
 
-.screen {
-  display: none;
+h1 {
+  color: #333;
+  margin-top: 20px;
 }
 
-#camera-screen {
-  display: block;
-}
-
-video {
+.camera-container {
+  position: relative;
+  display: inline-block;
   width: 100%;
-  max-width: 400px;
-  border: 2px solid #333;
-  border-radius: 10px;
+  max-width: 600px;
+  margin: 20px auto;
 }
 
-canvas {
+#camera {
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+#snapshot {
   display: none;
+}
+
+#recognition-box {
+  position: absolute;
+  border: 2px dashed red;
+  box-sizing: border-box;
+  cursor: move;
+  width: 80%;
+  height: 30%;
+  top: 35%;
+  left: 10%;
 }
 
 button {
-  margin-top: 15px;
   padding: 10px 20px;
   font-size: 16px;
-  cursor: pointer;
-  background-color: #007BFF;
-  color: white;
+  margin: 20px 10px;
   border: none;
   border-radius: 5px;
+  background-color: #4CAF50;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.3s;
 }
 
 button:hover {
-  background-color: #0056b3;
-}
-
-.details {
-  margin-top: 20px;
-  font-size: 18px;
-  color: #333;
-  max-width: 500px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-#results strong {
-  color: #d9534f;
-}
-
-#results-screen {
-  padding: 20px;
-}
-
-#home {
-  margin-top: 20px;
-  background-color: #28a745;
-}
-
-#home:hover {
-  background-color: #218838;
-}
-
-#home:hover {
-  background-color: #218838;
+  background-color: #45a049;
 }
 
 #live-ocr-text {
   margin-top: 20px;
   font-size: 16px;
-  color: #555;
+  color: #333;
   background-color: #f9f9f9;
-  padding: 10px;
+  padding: 15px;
   border: 1px solid #ddd;
   border-radius: 5px;
-  max-width: 400px;
+  max-width: 90%;
   margin-left: auto;
   margin-right: auto;
+  word-wrap: break-word;
+}
+
+#results {
+  padding: 20px;
+}
+
+#results div {
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+#results h2 {
+  color: #4CAF50;
+}
+
+#results p {
+  color: #555;
+}
+
+#results a {
+  color: #1E90FF;
+  text-decoration: none;
+}
+
+#results a:hover {
+  text-decoration: underline;
+}
+
+/* レスポンシブデザイン */
+@media (max-width: 600px) {
+  #recognition-box {
+    width: 90%;
+    height: 25%;
+    top: 35%;
+    left: 5%;
+  }
+
+  button {
+    width: 80%;
+    font-size: 14px;
+  }
+
+  #live-ocr-text {
+    font-size: 14px;
+    padding: 10px;
+  }
 }
