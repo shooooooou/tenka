@@ -29,11 +29,22 @@ setupCamera();
 setInterval(() => {
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
-  canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+  const context = canvas.getContext('2d');
+  context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-  const imageData = canvas.toDataURL('image/png');
+  // グレースケール化と二値化の前処理
+  const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+  for (let i = 0; i < data.length; i += 4) {
+    const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+    const threshold = avg > 128 ? 255 : 0; // 二値化処理
+    data[i] = data[i + 1] = data[i + 2] = threshold; // グレースケール化および二値化
+  }
+  context.putImageData(imageData, 0, 0);
+
+  const processedImageData = canvas.toDataURL('image/png');
   Tesseract.recognize(
-    imageData,
+    processedImageData,
     'jpn',
     {
       logger: info => console.log(info),
@@ -49,11 +60,21 @@ setInterval(() => {
 captureButton.addEventListener('click', () => {
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
-  canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+  const context = canvas.getContext('2d');
+  context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-  // OCR処理（Tesseract.jsなどのOCRライブラリを利用する）
-  const imageData = canvas.toDataURL('image/png');
-  performOCR(imageData);
+  // グレースケール化と二値化の前処理
+  const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imageData.data;
+  for (let i = 0; i < data.length; i += 4) {
+    const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
+    const threshold = avg > 128 ? 255 : 0; // 二値化処理
+    data[i] = data[i + 1] = data[i + 2] = threshold; // グレースケール化および二値化
+  }
+  context.putImageData(imageData, 0, 0);
+
+  const processedImageData = canvas.toDataURL('image/png');
+  performOCR(processedImageData);
 });
 
 // OCR実行
