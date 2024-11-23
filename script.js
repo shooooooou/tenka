@@ -93,6 +93,17 @@ function preprocessImage(canvasElement) {
   });
 }
 
+// JSONデータの読み込み
+let additivesData = [];
+fetch('data.json')
+  .then(response => response.json())
+  .then(data => {
+    additivesData = data;
+  })
+  .catch(error => {
+    console.error('JSONデータの読み込みに失敗しました:', error);
+  });
+
 // 定期的にOCRを実行して読み取り中の文字を表示
 setInterval(() => {
   try {
@@ -204,39 +215,20 @@ async function performOCR(imageData) {
 
 // 添加物名から詳細を検索
 function searchAdditiveDetails(text) {
-  const additives = {
-    '保存料': {
-      name: '保存料',
-      merit: '食品の腐敗を防ぐために使用される添加物。',
-      demerit: '一部の保存料にはアレルギー反応を引き起こす可能性があります。',
-      link: 'https://example.com/preservatives'
-    },
-    '着色料': {
-      name: '着色料',
-      merit: '食品に色を付けるために使用される。',
-      demerit: '過剰摂取により健康への悪影響が懸念されることがあります。',
-      link: 'https://example.com/colorants'
-    },
-    '香料': {
-      name: '香料',
-      merit: '食品に香りを付けるための添加物。',
-      demerit: '人工香料は一部の人にとって刺激となる場合があります。',
-      link: 'https://example.com/flavoring'
-    }
-    // 必要に応じて他の添加物も追加
-  };
-
   const additiveNames = text.trim().split(/\s+/);
   let resultsHTML = '';
 
   additiveNames.forEach(additiveName => {
-    if (additives[additiveName]) {
-      const additive = additives[additiveName];
+    const additive = additivesData.find(item => 
+      item.添加物名.includes(additiveName) || 
+      (item.別名 && item.別名.some(alias => alias.includes(additiveName)))
+    );
+    if (additive) {
       resultsHTML += `<div>
-        <h2>${additive.name}</h2>
-        <p><strong>メリット:</strong> ${additive.merit}</p>
-        <p><strong>デメリット:</strong> ${additive.demerit}</p>
-        <p><a href="${additive.link}" target="_blank">参考リンク</a></p>
+        <h2>${additive.添加物名}</h2>
+        <p><strong>メリット:</strong> ${additive.メリット}</p>
+        <p><strong>デメリット:</strong> ${additive.デメリット}</p>
+        <p><a href="${additive.関連リンク}" target="_blank">参考リンク</a></p>
       </div>`;
     }
   });
